@@ -381,3 +381,37 @@ docker volume inspect netfiix_mysql-data
 #
 # Use a .env file and reference via ${VAR_NAME} in docker-compose.yml
 # Never commit real credentials to git
+
+
+
+
+
+
+
+# Git Branching Strategy
+
+## Main Branches
+
+### `stream-dev`
+- Primary development branch.
+- All new features, bug fixes, and enhancements are created from this branch.
+- After completion, changes must be merged back into `stream-dev`.
+
+### `stream-test`
+- Testing and QA integration branch.
+- `stream-dev` is always merged into `stream-test` for validation and testing.
+
+### `stream-master`
+- Production/stable release branch.
+- Only verified and tested code from `stream-test` should be merged into `stream-master`.
+
+---
+
+## Development Flow
+
+```text
+stream-dev
+   └── feature/fix branches
+           └── merge back into stream-dev
+                   └── merge into stream-test
+                           └── merge into stream-master
