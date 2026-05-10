@@ -223,3 +223,161 @@ Netflix optimizes:
 
 To stream videos smoothly to millions of users simultaneously.
 EOF
+
+
+# Docker compose 
+# ╔══════════════════════════════════════════════════════════════════╗
+# ║              🎬  NETFIIX — Infrastructure Stack                  ║
+# ║         MySQL · Kafka (KRaft) · Redis · Redis Insight            ║
+# ╚══════════════════════════════════════════════════════════════════╝
+
+
+# ──────────────────────────────────────────
+# 📦  SERVICES & PORTS
+# ──────────────────────────────────────────
+
+# Service         Image                        Port(s)
+# ─────────────── ──────────────────────────── ──────────────────────
+# mysql           mysql:8.0                    3306
+# kafka           confluentinc/cp-kafka:7.6.0  9092 (internal)
+#                                              29092 (host)
+# redis           redis:7.2-alpine             6379
+# redis-insight   redis/redisinsight:latest    5540  → http://localhost:5540
+
+
+# ──────────────────────────────────────────
+# ✅  PREREQUISITES
+# ──────────────────────────────────────────
+
+# Make sure these are installed before running:
+
+docker --version          # Docker >= 24.x
+docker compose version    # Docker Compose >= 2.x
+
+
+# ──────────────────────────────────────────
+# 🚀  START — spin up all services
+# ──────────────────────────────────────────
+
+docker compose up -d
+# -d → detached mode (runs in background)
+
+
+# ──────────────────────────────────────────
+# 🔍  STATUS — check running containers
+# ──────────────────────────────────────────
+
+docker compose ps
+# shows: container name, image, status, ports
+
+
+# ──────────────────────────────────────────
+# 📋  LOGS — view service output
+# ──────────────────────────────────────────
+
+docker compose logs -f              # all services (follow mode)
+docker compose logs -f mysql        # MySQL only
+docker compose logs -f kafka        # Kafka only
+docker compose logs -f redis        # Redis only
+docker compose logs -f redis-insight
+
+
+# ──────────────────────────────────────────
+# 🔌  CONNECT — credentials & access
+# ──────────────────────────────────────────
+
+# MySQL
+mysql -h 127.0.0.1 -P 3306 -u appuser -papppassword appdb
+#   root password : rootpassword
+#   app user      : appuser / apppassword
+#   database      : appdb
+
+# Kafka  (list topics from host machine)
+kafka-topics --bootstrap-server localhost:29092 --list
+#   internal (container) : kafka:9092
+#   external (host)      : localhost:29092
+
+# Redis CLI
+redis-cli -h 127.0.0.1 -p 6379 -a redispassword ping
+# expected response → PONG
+
+# Redis Insight (GUI)
+open http://localhost:5540
+#   Host     : redis
+#   Port     : 6379
+#   Password : redispassword
+
+
+# ──────────────────────────────────────────
+# 🏥  HEALTH — verify all containers healthy
+# ──────────────────────────────────────────
+
+docker inspect --format='{{.Name}} → {{.State.Health.Status}}' \
+  mysql kafka redis
+# expected → /mysql → healthy
+#            /kafka → healthy
+#            /redis → healthy
+
+
+# ──────────────────────────────────────────
+# 🔄  COMMON OPERATIONS
+# ──────────────────────────────────────────
+
+# Restart a single service
+docker compose restart kafka
+
+# Stop all services (keeps volumes/data)
+docker compose stop
+
+# Stop + remove containers (keeps volumes/data)
+docker compose down
+
+# ⚠️  Stop + wipe ALL data (volumes deleted)
+docker compose down -v
+
+
+# ──────────────────────────────────────────
+# 🛠️  TROUBLESHOOTING
+# ──────────────────────────────────────────
+
+# Port already in use?
+lsof -i :3306     # find what's using MySQL port
+lsof -i :6379     # find what's using Redis port
+lsof -i :9092     # find what's using Kafka port
+
+# Force recreate containers (picks up config changes)
+docker compose up -d --force-recreate
+
+# Remove dangling images to free disk space
+docker image prune -f
+
+# Enter a running container shell
+docker exec -it mysql bash
+docker exec -it kafka bash
+docker exec -it redis sh       # alpine → sh not bash
+
+
+# ──────────────────────────────────────────
+# 📁  VOLUMES — where data lives
+# ──────────────────────────────────────────
+
+docker volume ls | grep netfiix
+# netfiix_mysql-data    → MySQL databases
+# netfiix_redis-data    → Redis AOF snapshots
+# netfiix_kafka-data    → Kafka topic partitions
+
+# Inspect a volume path on disk
+docker volume inspect netfiix_mysql-data
+
+
+# ──────────────────────────────────────────
+# ⚠️  PRODUCTION REMINDERS
+# ──────────────────────────────────────────
+
+# Change ALL default passwords before deploying:
+#   MYSQL_ROOT_PASSWORD  : rootpassword   ← change this
+#   MYSQL_PASSWORD       : apppassword    ← change this
+#   Redis --requirepass  : redispassword  ← change this
+#
+# Use a .env file and reference via ${VAR_NAME} in docker-compose.yml
+# Never commit real credentials to git

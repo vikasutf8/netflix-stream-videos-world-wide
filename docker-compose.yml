@@ -1,0 +1,112 @@
+version: "3.9"
+
+# ─────────────────────────────────────────────
+# Networks
+# ─────────────────────────────────────────────
+networks:
+  app-network:
+    driver: bridge  # All services communicate on this shared bridge network
+
+# ─────────────────────────────────────────────
+# Volumes — named volumes for data persistence
+# ─────────────────────────────────────────────
+volumes:
+  mysql-data:   # Stores MySQL database files across container restarts
+  redis-data:   # Stores Redis AOF/RDB snapshots
+  kafka-data:   # Stores Kafka topic/partition data
+
+# ─────────────────────────────────────────────
+# Services
+# ─────────────────────────────────────────────
+services:
+
+  # ── MySQL ──────────────────────────────────
+  mysql:
+    image: mysql:8.0                        # Official MySQL 8.0 image
+    container_name: mysql
+    restart: unless-stopped                 # Auto-restart unless manually stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword     # Root user password (change in production!)
+      MYSQL_DATABASE: appdb                 # Database created on first run
+      MYSQL_USER: appuser                   # Non-root app user
+      MYSQL_PASSWORD: apppassword           # Password for appuser (change in production!)
+    ports:
+      - "3306:3306"                         # Expose MySQL port to host for local clients
+    volumes:
+      - mysql-data:/var/lib/mysql           # Persist database files
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Kafka (KRaft mode — no ZooKeeper needed) ──
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0      # Confluent Kafka 7.6 — KRaft is stable & default
+    container_name: kafka
+    restart: unless-stopped
+    environment:
+      KAFKA_NODE_ID: 1                                        # Unique node ID (replaces BROKER_ID in KRaft)
+      KAFKA_PROCESS_ROLES: broker,controller                  # Single node acts as both broker AND controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093            # Quorum voter: nodeId@host:controllerPort
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://0.0.0.0:29092,CONTROLLER://kafka:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      # PLAINTEXT://kafka:9092           → inter-container communication
+      # PLAINTEXT_HOST://localhost:29092 → host-machine clients (IDE, CLI)
+      # CONTROLLER://kafka:9093          → internal KRaft controller (not exposed)
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER             # Which listener handles controller traffic
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT             # Listener for broker-to-broker communication
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1               # 1 replica — fine for single-node dev
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"                 # Auto-create topics on first publish
+      CLUSTER_ID: "Mk3OEYBSD38oBQmHd4kDlA"                   # Fixed UUID required by KRaft (generate with kafka-storage random-uuid)
+    ports:
+      - "9092:9092"                         # Kafka broker port (container-to-container)
+      - "29092:29092"                       # Kafka port exposed to the host machine
+    volumes:
+      - kafka-data:/var/lib/kafka/data      # Persist Kafka topic/partition data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  # ── Redis ───────────────────────────────────
+  redis:
+    image: redis:7.2-alpine                 # Lightweight Alpine-based Redis 7.2
+    container_name: redis
+    restart: unless-stopped
+    # List format used here — avoids YAML folded-block (>) parsing errors with inline comments
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec", "--requirepass", "redispassword"]
+    # --appendonly yes       → Enable AOF persistence (data survives container restarts)
+    # --appendfsync everysec → Flush to disk every second (balance of safety vs performance)
+    # --requirepass          → Password auth required (change in production!)
+    ports:
+      - "6379:6379"                         # Default Redis port
+    volumes:
+      - redis-data:/data                    # Persist AOF/RDB files
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "redispassword", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis Insight ────────────────────────────
+  redis-insight:
+    image: redis/redisinsight:latest        # Official Redis GUI (browser-based)
+    container_name: redis-insight
+    restart: unless-stopped
+    depends_on:
+      - redis                               # Start only after Redis is up
+    ports:
+      - "5540:5540"                         # Access Redis Insight at http://localhost:5540
+    networks:
+      - app-network
+    # First-time setup: open http://localhost:5540 and add connection:
+    #   Host: redis  |  Port: 6379  |  Password: redispassword

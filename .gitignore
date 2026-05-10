@@ -1,0 +1,29 @@
+.env
+
+
+# docker compose
+
+docker-compose.override.yml
+docker-compose.prod.yml
+docker-compose.dev.yml  
+
+
+
+# --- IGNORE ---
+
+
+# IDE files intellija
+.idea/
+*.iml
+workspace.xml
+tasks.xml
+usage.statistics.xml
+dictionaries/
+shelf/
+# End of recent edits   
+
+
+
+
+
+
