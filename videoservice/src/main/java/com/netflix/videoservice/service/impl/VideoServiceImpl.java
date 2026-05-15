@@ -1,18 +1,18 @@
 package com.netflix.videoservice.service.impl;
 
-import com.netflix.videoservice.event.VideoUploadEvent;
+import com.netflix.videoservice.event.VideoUploadedEvent;
+import com.netflix.videoservice.service.KafkaProducerService;
 import com.netflix.videoservice.service.S3Service;
 import com.netflix.videoservice.service.VideoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tomcat.util.http.fileupload.InvalidFileNameException;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.S3ServiceClientConfiguration;
 
+
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -24,7 +24,8 @@ import java.util.UUID;
 public class VideoServiceImpl implements VideoService {
 
     private final S3Service s3Service;
-    private final KafkaTemplate<String, VideoUploadEvent> kafkaTemplate;
+    private final KafkaProducerService kafkaProducerService;
+
 
     @Value("${aws.s3.bucket}")
     private String bucket;
@@ -61,7 +62,20 @@ public class VideoServiceImpl implements VideoService {
 
         // ----step4 : create an event and push that on kafka as producer ....
         // producer must be ordered and idempotent to avoid duplicate processing and out of order processing in consumer side
+        // ── Step 5: publish VideoUploadedEvent to Kafka ───────────────────────
+        VideoUploadedEvent event = VideoUploadedEvent.builder()
+                .eventId(UUID.randomUUID())
+                .movieId(UUID.fromString(movieId))
+                .videoKey(videoKey)
+                .bucket(bucket)
+                .originalFilename(file.getOriginalFilename())
+                .fileSizeBytes(file.getSize())
+                .contentType(file.getContentType())
+                .uploadedAt(Instant.now())
+                .build();
 
+        kafkaProducerService.publishVideoUploadedEvent(event);
+        log.info("VideoUploadedEvent published: movieId={}", movieId);
         return "";
     }
 }
