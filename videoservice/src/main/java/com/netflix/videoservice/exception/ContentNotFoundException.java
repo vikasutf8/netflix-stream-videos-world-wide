@@ -1,6 +1,7 @@
 package com.netflix.videoservice.exception;
 
-import org.hibernate.validator.constraints.UUID;
+
+import java.util.UUID;
 
 public class ContentNotFoundException extends ContentServiceException {
     public ContentNotFoundException(UUID id) {

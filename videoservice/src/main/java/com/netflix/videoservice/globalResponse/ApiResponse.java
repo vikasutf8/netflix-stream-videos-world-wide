@@ -1,7 +1,7 @@
 package com.netflix.videoservice.globalResponse;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.netflix.contentservice.globalResponse.ApiError;
+
 import lombok.Builder;
 import lombok.Getter;
 
