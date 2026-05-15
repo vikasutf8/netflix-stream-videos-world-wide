@@ -49,6 +49,34 @@ public class GlobalExceptionHandler {
                         .build()));
     }
 
+    @ExceptionHandler(S3UploadException.class)
+    public ResponseEntity<ApiResponse<Void>> handleS3Upload(
+            S3UploadException ex, HttpServletRequest req) {
+
+        log.error("S3 upload failed at {}: {}", req.getRequestURI(), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                .body(ApiResponse.failure(ApiError.builder()
+                        .status(502)
+                        .code(ex.getErrorCode())
+                        .message(ex.getMessage())
+                        .path(req.getRequestURI())
+                        .build()));
+    }
+
+    @ExceptionHandler(ContentServiceException.class)
+    public ResponseEntity<ApiResponse<Void>> handleContentService(
+            ContentServiceException ex, HttpServletRequest req) {
+
+        log.warn("Domain error at {}: {}", req.getRequestURI(), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.failure(ApiError.builder()
+                        .status(400)
+                        .code(ex.getErrorCode())
+                        .message(ex.getMessage())
+                        .path(req.getRequestURI())
+                        .build()));
+    }
+
     // ── Validation (@Valid failures) ──────────────────────────────────────────
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

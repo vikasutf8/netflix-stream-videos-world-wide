@@ -1,5 +1,6 @@
 package com.netflix.videoservice.service;
 
+import com.netflix.videoservice.exception.S3UploadException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -52,7 +53,7 @@ public class S3Service {
             return videoKey;
 
         } catch (IOException e) {
-            throw new RuntimeException("Failed to upload video to S3: " + e.getMessage(), e);
+            throw new S3UploadException("S3 upload failed for movieId: " + movieId);
         }
     }
 
