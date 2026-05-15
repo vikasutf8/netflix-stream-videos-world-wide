@@ -4,6 +4,7 @@ package com.netflix.contentservice.service.impl;
 import com.netflix.contentservice.dto.MovieRequest;
 import com.netflix.contentservice.dto.MovieResponse;
 import com.netflix.contentservice.enums.Genre;
+import com.netflix.contentservice.enums.VideoStatus;
 import com.netflix.contentservice.exception.ContentNotFoundException;
 import com.netflix.contentservice.exception.DuplicateTitleException;
 import com.netflix.contentservice.mapper.ContentMapper;
@@ -65,5 +66,24 @@ public class ContentServiceImpl implements ContentService {
     public Page<MovieResponse> searchByTitle(String keyword, Pageable pageable) {
         return contentRepository.searchByTitle(keyword, pageable)
                 .map(contentMapper::toResponse);
+    }
+
+// move is uplaod via video serviuce
+    public void uploadVideoKey(UUID movieId, String videoKey) {
+        Content content = contentRepository.findById(movieId)
+                .orElseThrow(() -> new ContentNotFoundException(movieId));
+        content.setVideoKey(videoKey);
+        content.setVideoStatus(VideoStatus.UPLOADED);
+        contentRepository.save(content);
+        log.info("Video key uploaded for movie id={}", movieId);
+    }
+// after encoding and ecoded its ready to streaming --vai encoding  service
+    public void updateHlsUri(UUID movieId, String hlsUri) {
+        Content content = contentRepository.findById(movieId)
+                .orElseThrow(() -> new ContentNotFoundException(movieId));
+        content.setHlsUri(hlsUri);
+        content.setVideoStatus(VideoStatus.READY);
+        contentRepository.save(content);
+        log.info("movie is ready to streaming  uploaded for movie id={}", movieId);
     }
 }
