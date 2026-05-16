@@ -75,17 +75,19 @@ Content Service consumer (next)
 
 
 ### FFmpeg command — encode to HLS segments
+- these argurent
 ```shell
 List<String> cmd = List.of(
 ffmpegPath,
-"-i",         input.toString(),
-"-vf",        "scale=" + fmt.resolution(),
-"-b:v",       fmt.bitrate(),
-"-c:v",       "libx264",
-"-c:a",       "aac",
+"-i",         input.toString(), //inputfile
+"-vf",        "scale=" + fmt.resolution(), //scale to resolution
+"-b:v",       fmt.bitrate(),// video codex
+"-c:v",       "libx264", //video biterate
+"-c:a",       "aac", //audio codex
+"-b:a",       "128k", //audio bitrate
 "-hls_time",  "6",                                    // 6-second segments
 "-hls_playlist_type", "vod",
-"-hls_segment_filename", variantDir.resolve("segment_%03d.ts").toString(),
+"-hls_segment_filename", variantDir.resolve("segment_%03d.ts").toString(),  //segment name pattern
 variantDir.resolve("playlist.m3u8").toString()
 );
 ```
