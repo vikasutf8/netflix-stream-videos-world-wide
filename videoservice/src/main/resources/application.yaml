@@ -17,13 +17,17 @@ spring:
   aws:
     s3:
       bucket: netflix-raw-videos
+    region: ${AWS_REGION:us-east-1}
+    accessKey: ${AWS_ACCESS_KEY_ID:}
+    secretKey: ${AWS_SECRET_ACCESS_KEY:}
+
 
 
 server:
   port:6002
 
 
-#health check and info endpoint
+#health check and info endpoint Actuator
 management:
   endpoints:
     web:
