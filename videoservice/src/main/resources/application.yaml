@@ -1,3 +1,41 @@
 spring:
   application:
     name: videoservice
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all                  # wait for all replicas — no message loss
+      retries: 3
+      properties:
+        enable.idempotence: true # exactly-once producer semantics
+    topics:
+      video-uploaded: video.uploaded.events
+
+  aws:
+    s3:
+      bucket: netflix-raw-videos
+    region: ${AWS_REGION:us-east-1}
+    accessKey: ${AWS_ACCESS_KEY_ID:}
+    secretKey: ${AWS_SECRET_ACCESS_KEY:}
+
+  servlet:
+    multipart:
+      max-file-size: 500MB
+      max-request-size: 500MB
+
+server:
+  port:6002
+
+
+#health check and info endpoint Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when_authorized
