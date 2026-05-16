@@ -49,7 +49,7 @@ public class EncodingService {
         Path   workDir = Path.of(System.getProperty("java.io.tmpdir"), jobId);
 
         try {
-            Files.createDirectories(workDir);
+            Files.createDirectories(workDir);// ---TODO: that directories is created here
             log.info("Encoding job started: jobId={}, input={}", jobId, rawVideoPath);
 //IMPORTANT : LOOPING
             // ── encode each variant ───────────────────────────────────────────

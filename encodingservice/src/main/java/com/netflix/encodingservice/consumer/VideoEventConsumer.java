@@ -52,7 +52,7 @@ public class VideoEventConsumer {
      * Kafka videoEncodedEvent with all the details of the encoded video
      *
      * */
-
+//CONSUMER of videoService
     public void onVideoUploaded(
             @Payload VideoUploadedEvent event,
             @Header(KafkaHeaders.RECEIVED_PARTITION) int partition,
@@ -68,8 +68,10 @@ public class VideoEventConsumer {
         Path workDir      = null;
 
         try {
+
             // ── Step 1: download raw file from S3 ─────────────────────────────
-            // we need directories --videos and encodedvideo
+            //TODO:
+            // we need directories --videos and encodedvideo ---muttiple videos M1,M2,M3 --- each video has multiple encoding jobs --M1-1080p, M1-720p, M1-480p, M1-360p
             rawVideoPath = s3Service.downloadRawVideo(event.getVideoKey(), movieId);
             log.info("Raw video downloaded: movieId={}", movieId);
 
@@ -81,11 +83,16 @@ public class VideoEventConsumer {
             List<String> uploadedKeys = s3Service.uploadHlsOutput(workDir, movieId);
             String masterPlaylistKey  = "hls/" + movieId + "/master.m3u8";
             log.info("HLS output uploaded: {} files, movieId={}", uploadedKeys.size(), movieId);
-
+            String hlsUrl = String.format(
+                    "https://%s.s3.amazonaws.com/%s",
+                    event.getBucket(),
+                    masterPlaylistKey
+            );
             // ── Step 4: publish VideoEncodedEvent ─────────────────────────────
             VideoEncodedEvent encodedEvent = VideoEncodedEvent.builder()
                     .eventId(UUID.randomUUID())
                     .movieId(movieId)
+                    .hlsUri(hlsUrl) // why its using its Never be public
                     .masterPlaylistKey(masterPlaylistKey)
                     .variantKeys(uploadedKeys)
                     .encodedQualities(List.of("1080p", "720p", "480p", "360p"))
@@ -109,6 +116,7 @@ public class VideoEventConsumer {
                             .eventId(UUID.randomUUID())
                             .movieId(movieId)
                             .status(VideoEncodedEvent.EncodingStatus.FAILED)
+                            .errorMessage(ex.getMessage())
                             .encodedAt(Instant.now())
                             .build()
             );

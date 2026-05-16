@@ -16,7 +16,7 @@ public class KafkaProducerService {
 
     @Value("${kafka.topics.video-encoded}")
     private String videoEncodedTopic;
-
+// PRODUCER SIDE --encoding event pulblic for string
     public void publishVideoEncodedEvent(VideoEncodedEvent event) {
         kafkaTemplate.send(
                 videoEncodedTopic,

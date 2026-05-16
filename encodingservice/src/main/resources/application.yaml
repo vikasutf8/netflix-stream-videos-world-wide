@@ -10,12 +10,21 @@ spring:
         value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
         properties:
           spring.json.trusted.packages: "com.netflix.encodingservice.event"
+          spring.json.value.default.type: com.netflix.encodingservice.event.VideoUploadedEvent
+          spring.json.use.type.headers: false
       producer:
         key-serializer: org.apache.kafka.common.serialization.StringSerializer
         value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
         acks: all
         retries: 3
-
+#consumer:
+#  group-id: encoding-group
+#  auto-offset-reset: earliest
+#
+#  properties:
+#    spring.json.trusted.packages: com.netflix.encodingservice.event
+#    spring.json.value.default.type: com.netflix.encodingservice.event.VideoUploadedEvent
+#    spring.json.use.type.headers: false
 aws:
   region: ap-south-1
   accessKey: ${AWS_ACCESS_KEY}

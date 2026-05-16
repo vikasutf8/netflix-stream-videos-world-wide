@@ -29,12 +29,16 @@ public class S3Service {
     /**
      * Downloads raw video from S3 to a local temp file.
      * Returns path to the downloaded file.
+     *
+     *
+     * encode-path as basePath
      */
     public Path downloadRawVideo(String videoKey, UUID movieId) throws IOException {
         Path tempFile = Files.createTempFile("raw_" + movieId + "_", ".mp4");
-
+        // createing a unique path of ecoding jobs
+        log.info("Temp file created for download: {}", tempFile);
         log.info("Downloading raw video: key={}", videoKey);
-
+        //create temp directory --temp/encoing ---M1, M2, M3  movies
         GetObjectRequest getRequest = GetObjectRequest.builder()
                 .bucket(bucket)
                 .key(videoKey)

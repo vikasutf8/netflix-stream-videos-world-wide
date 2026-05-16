@@ -72,3 +72,20 @@ Content Service consumer (next)
      *     master.m3u8
      */
 ```
+
+
+### FFmpeg command — encode to HLS segments
+```shell
+List<String> cmd = List.of(
+ffmpegPath,
+"-i",         input.toString(),
+"-vf",        "scale=" + fmt.resolution(),
+"-b:v",       fmt.bitrate(),
+"-c:v",       "libx264",
+"-c:a",       "aac",
+"-hls_time",  "6",                                    // 6-second segments
+"-hls_playlist_type", "vod",
+"-hls_segment_filename", variantDir.resolve("segment_%03d.ts").toString(),
+variantDir.resolve("playlist.m3u8").toString()
+);
+```
