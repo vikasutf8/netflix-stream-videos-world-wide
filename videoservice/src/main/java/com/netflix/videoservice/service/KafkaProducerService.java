@@ -31,6 +31,7 @@ public class KafkaProducerService {
                         event.getMovieId().toString(),   // partition key
                         event
                 );
+        // listen to encoding service asynchronously
 
         future.whenComplete((result, ex) -> {
             if (ex != null) {
