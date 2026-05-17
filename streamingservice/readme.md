@@ -49,3 +49,18 @@ StreamingController → StreamingService.getStreamingUrl()
                 generatedAt: "2026-05-17T..."
             }
 ```
+
+
+## Redis Keys:
+─────────────────────────────────────────────────────────────────────
+master_playlist:{movieId}   → "hls/{movieId}/master.m3u8"     TTL: 24h
+set by: Kafka consumer (VideoEncodedEvent)
+read by: StreamingController (Step 1)
+
+streaming_url:{movieId}     → "https://s3.../master.m3u8?X-Amz-..."  TTL: 55min
+set by: StreamingServiceImpl (on cache miss)
+read by: StreamingServiceImpl (cache hit check)
+
+streaming_qualities:{movieId} → "1080p,720p,480p,360p"         TTL: 24h
+set by: Kafka consumer
+read by: StreamingServiceImpl (response building)
