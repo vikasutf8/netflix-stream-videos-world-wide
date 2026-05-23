@@ -1,3 +1,105 @@
+#spring:
+#  application:
+#    name: streamingservice
+#  data:
+#    redis:
+#      host: ${REDIS_HOST:localhost}
+#      port: ${REDIS_PORT:6379}
+#      password: ${REDIS_PASSWORD:}
+#      timeout: 2000ms
+#      lettuce:
+#        pool:
+#          max-active: 10
+#          max-idle: 5
+#          min-idle: 2
+#  kafka:
+#    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+#    consumer:
+#      group-id: streaming-service-group
+#      auto-offset-reset: earliest
+#
+#  datasource:
+#    url: jdbc:postgresql://localhost:5432/streaming_db
+#    username: ${DB_USER}
+#    password: ${DB_PASS}
+#
+#  jpa:
+#    hibernate:
+#      ddl-auto: validate
+#    properties:
+#      hibernate.dialect: org.hibernate.dialect.PostgreSQLDialect
+#
+#aws:
+#  region: ap-south-1
+#  accessKey: ${AWS_ACCESS_KEY}
+#  secretKey: ${AWS_SECRET_KEY}
+#  s3:
+#    encoded-bucket: netflix-encoded-videos
+#
+#streaming:
+#  presigned-expiry-minutes: 60
+#
+#kafka:
+#  topics:
+#    video-encoded: video.encoded.events
+
 spring:
   application:
     name: streamingservice
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 10
+          max-idle: 5
+          min-idle: 2
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: streaming-service-group
+      auto-offset-reset: earliest
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/streaming_db
+    username: ${DB_USER}
+    password: ${DB_PASS}
+
+aws:
+  region: ap-south-1
+  accessKey: ${AWS_ACCESS_KEY}
+  secretKey: ${AWS_SECRET_KEY}
+  s3:
+    encoded-bucket: netflix-encoded-videos
+
+streaming:
+  presigned-expiry-minutes: 60
+
+redis:
+  ttl:
+    streaming-url-minutes: 55       # slightly less than presigned URL expiry
+    master-playlist-minutes: 1440   # 24h — stable after encoding, rarely changes
+
+kafka:
+  topics:
+    video-encoded: video.encoded.events
+
+
+
+
+server:
+  port: 6004
+
+#  health check and info endpoint Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when_authorized
