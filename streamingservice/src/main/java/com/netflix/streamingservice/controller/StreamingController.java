@@ -1,6 +1,8 @@
 package com.netflix.streamingservice.controller;
 
 import com.netflix.streamingservice.dto.response.StreamingResponse;
+import com.netflix.streamingservice.globalResponse.ApiError;
+import com.netflix.streamingservice.globalResponse.ApiResponse;
 import com.netflix.streamingservice.service.RedisService;
 import com.netflix.streamingservice.service.StreamingService;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +29,6 @@ public class StreamingController {
 
     /**
      * GET /api/v1/streaming/{movieId}/play
-     *
      * Flow:
      * 1. check Redis for master_playlist:{movieId}       → 404 if missing (not encoded yet)
      * 2. check Redis for streaming_url:{movieId}         → return cached if hit
@@ -48,7 +49,7 @@ public class StreamingController {
             log.warn("Master playlist key not found in Redis | movieId={}", movieId);
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(ApiResponse.failure(
-                            com.netflix.streamingservice.common.ApiError.builder()
+                            ApiError.builder()
                                     .status(404)
                                     .code("STREAMING_NOT_READY")
                                     .message("Video is still processing or not found: " + movieId)
@@ -58,9 +59,10 @@ public class StreamingController {
 
         // ── Step 2 + 3 + 4: handled inside service (cache hit/miss + presign) ─
         StreamingResponse response = streamingService.getStreamingUrl(movieId, masterPlaylistKey);
-
+// step nnext - -> 5 --removeing  presigned url from redis after 55 minn to avoid stale url --- prevent HOT key
         return ResponseEntity.ok(ApiResponse.success(response, "Streaming URL ready"));
     }
+
 
     /**
      * DELETE /api/v1/streaming/{movieId}/cache

@@ -1,5 +1,6 @@
 package com.netflix.streamingservice.service;
 
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,8 +21,11 @@ public class S3Service {
     @Value("${aws.s3.encoded-bucket}")
     private String encodedBucket;
 
+    @Getter
     @Value("${streaming.presigned-expiry-minutes:60}")
     private int expiryMinutes;
+    //late say 60 minn...how to set eviction policy in redis for 60 minn..
+    // we can set 55 minn for eviction policy in redis to avoid stale url
 
     /**
      * Generates a presigned GET URL for the HLS master playlist.
@@ -44,5 +48,4 @@ public class S3Service {
         return url;
     }
 
-    public int getExpiryMinutes() { return expiryMinutes; }
 }

@@ -1,6 +1,7 @@
 package com.netflix.streamingservice.service;
 
 import com.netflix.streamingservice.dto.response.StreamingResponse;
+import com.netflix.streamingservice.repository.StreamingMetadataRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -15,33 +16,32 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class StreamingService {
     private final StreamingMetadataRepository metadataRepository;
-    private final RedisService                redisService;
-    private final S3Service                   s3Service;
+    private final RedisService                redisService; // redis checking again present nopt presinge url
+    private final S3Service                   s3Service; //using for create  new  presigned url
 
-
-    @Transactional
-    public void saveStreamingMetadata(UUID movieId, String masterPlaylistKey,
-                                      String bucket, List<String> qualities) {
-
-        // ── 1. upsert PostgreSQL ──────────────────────────────────────────────
-        var metadata = metadataRepository.findByMovieId(movieId)
-                .orElse(StreamingMetadata.builder().movieId(movieId).build());
-
-        metadata.setMasterPlaylistKey(masterPlaylistKey);
-        metadata.setBucket(bucket);
-        metadata.setEncodedQualities(qualities);
-        metadata.setStatus(StreamingStatus.READY);
-        metadataRepository.save(metadata);
-
-        // ── 2. evict stale Redis cache (re-encoding case) ─────────────────────
-        redisService.evictMovieCache(movieId);
-
-        // ── 3. warm Redis with fresh data ─────────────────────────────────────
-        redisService.saveMasterPlaylistKey(movieId, masterPlaylistKey);
-        redisService.saveQualities(movieId, qualities);
-
-        log.info("StreamingMetadata saved + Redis warmed | movieId={}", movieId);
-    }
+//    @Transactional
+//    public void saveStreamingMetadata(UUID movieId, String masterPlaylistKey,
+//                                      String bucket, List<String> qualities) {
+//
+//        // ── 1. upsert PostgreSQL ──────────────────────────────────────────────
+//        var metadata = metadataRepository.findByMovieId(movieId)
+//                .orElse(StreamingMetadata.builder().movieId(movieId).build());
+//
+//        metadata.setMasterPlaylistKey(masterPlaylistKey);
+//        metadata.setBucket(bucket);
+//        metadata.setEncodedQualities(qualities);
+//        metadata.setStatus(StreamingStatus.READY);
+//        metadataRepository.save(metadata);
+//
+//        // ── 2. evict stale Redis cache (re-encoding case) ─────────────────────
+//        redisService.evictMovieCache(movieId);
+//
+//        // ── 3. warm Redis with fresh data ─────────────────────────────────────
+//        redisService.saveMasterPlaylistKey(movieId, masterPlaylistKey);
+//        redisService.saveQualities(movieId, qualities);
+//
+//        log.info("StreamingMetadata saved + Redis warmed | movieId={}", movieId);
+//    }
 
     @Transactional(readOnly = true)
     public StreamingResponse getStreamingUrl(UUID movieId, String masterPlaylistKey) {

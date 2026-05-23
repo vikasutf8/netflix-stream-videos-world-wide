@@ -11,6 +11,17 @@ video-uploaded: video.uploaded.events
 video-encoded: video.encoded.events
 streaming service --> videoencoded - consumer
 
+---
+    /**
+     * GET /api/v1/streaming/{movieId}/play
+     *
+     * Flow:
+     * 1. check Redis for master_playlist:{movieId}       → 404 if missing (not encoded yet) or first time its not present ...is how to store or why not before do it
+     * 2. check Redis for streaming_url:{movieId}         → return cached if hit
+     * 3. cache MISS → generate fresh presigned URL via S3Service ---this process take time to do
+     * 4. cache fresh URL → return
+     */
+---
 
 ```shell
 video.encoded.events (Kafka)
