@@ -6,9 +6,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+import java.nio.charset.StandardCharsets;
 
 import java.time.Duration;
+import java.util.Base64;
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 @Slf4j
@@ -22,6 +26,7 @@ public class RedisService {
     private static final String STREAMING_URL_PREFIX    = "streaming_url:";
     private static final String MASTER_PLAYLIST_PREFIX  = "master_playlist:";
     private static final String QUALITIES_PREFIX        = "streaming_qualities:";
+    private static final String SIGNED_PLAYLIST_PREFIX  = "signed_playlist:";
 
     @Value("${redis.ttl.streaming-url-minutes:55}")
     private long streamingUrlTtlMinutes;
@@ -90,15 +95,50 @@ public class RedisService {
         return java.util.List.of(raw.split(","));
     }
 
+    // ── Signed Playlist Content ──────────────────────────────────────────────
+
+    /**
+     * Signed playlist content cache (m3u8 with per-line presigned URLs).
+     * TTL aligns with presigned URL cache to avoid stale entries.
+     */
+    public void saveSignedPlaylist(UUID movieId, String playlistPath, String signedPlaylistContent) {
+        redisTemplate.opsForValue().set(
+                signedPlaylistRedisKey(movieId, playlistPath),
+                signedPlaylistContent,
+                Duration.ofMinutes(streamingUrlTtlMinutes));
+
+        log.info("SignedPlaylist cached | movieId={} path={} ttl={}min",
+                movieId, playlistPath, streamingUrlTtlMinutes);
+    }
+
+    public Optional<String> getSignedPlaylist(UUID movieId, String playlistPath) {
+        return Optional.ofNullable(
+                redisTemplate.opsForValue().get(signedPlaylistRedisKey(movieId, playlistPath)));
+    }
+
     // ── Eviction ──────────────────────────────────────────────────────────────
 
     /** Call when re-encoding triggers — evict stale cache for this movie. */
     public void evictMovieCache(UUID movieId) {
-        redisTemplate.delete(java.util.List.of(
-                STREAMING_URL_PREFIX   + movieId,
+        Set<String> keysToDelete = new HashSet<>(java.util.List.of(
+                STREAMING_URL_PREFIX + movieId,
                 MASTER_PLAYLIST_PREFIX + movieId,
-                QUALITIES_PREFIX       + movieId
+                QUALITIES_PREFIX + movieId
         ));
-        log.info("Cache evicted | movieId={}", movieId);
+
+        Set<String> signedPlaylistKeys = redisTemplate.keys(SIGNED_PLAYLIST_PREFIX + movieId + ":*");
+        if (signedPlaylistKeys != null && !signedPlaylistKeys.isEmpty()) {
+            keysToDelete.addAll(signedPlaylistKeys);
+        }
+
+        redisTemplate.delete(keysToDelete);
+        log.info("Cache evicted | movieId={} deletedKeys={}", movieId, keysToDelete.size());
+    }
+
+    private String signedPlaylistRedisKey(UUID movieId, String playlistPath) {
+        String encodedPath = Base64.getUrlEncoder()
+                .withoutPadding()
+                .encodeToString(playlistPath.getBytes(StandardCharsets.UTF_8));
+        return SIGNED_PLAYLIST_PREFIX + movieId + ":" + encodedPath;
     }
 }
