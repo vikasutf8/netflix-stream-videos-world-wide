@@ -83,6 +83,10 @@ public class RedisService {
      * Stored alongside master playlist key — same TTL.
      */
     public void saveQualities(UUID movieId, java.util.List<String> qualities) {
+        if (qualities == null || qualities.isEmpty()) {
+            redisTemplate.delete(QUALITIES_PREFIX + movieId);
+            return;
+        }
         redisTemplate.opsForValue().set(
                 QUALITIES_PREFIX + movieId,
                 String.join(",", qualities),
@@ -114,6 +118,23 @@ public class RedisService {
     public Optional<String> getSignedPlaylist(UUID movieId, String playlistPath) {
         return Optional.ofNullable(
                 redisTemplate.opsForValue().get(signedPlaylistRedisKey(movieId, playlistPath)));
+    }
+
+    public void warmStreamingMetadataCache(
+            UUID movieId,
+            String masterPlaylistKey,
+            java.util.List<String> qualities) {
+
+        if (masterPlaylistKey == null || masterPlaylistKey.isBlank()) {
+            throw new IllegalArgumentException("masterPlaylistKey must not be blank for SUCCESS events");
+        }
+
+        evictMovieCache(movieId);
+        saveMasterPlaylistKey(movieId, masterPlaylistKey);
+        saveQualities(movieId, qualities);
+
+        log.info("Streaming metadata cache warmed | movieId={} hasQualities={}",
+                movieId, qualities != null && !qualities.isEmpty());
     }
 
     // ── Eviction ──────────────────────────────────────────────────────────────

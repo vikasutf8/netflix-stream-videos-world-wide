@@ -2,7 +2,6 @@ package com.netflix.streamingservice.consumer;
 
 import com.netflix.streamingservice.event.VideoEncodedEvent;
 import com.netflix.streamingservice.service.RedisService;
-import com.netflix.streamingservice.service.StreamingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -19,12 +18,15 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class VideoEncodedEventConsumer {
 
-    private final StreamingService streamingService;
     private final RedisService redisService;
 
+    /**
+     * Listen encoded video events from Kafka.
+     * On SUCCESS, cache master playlist key (and qualities) in Redis.
+     * On FAILED, evict stale cache for that movie.
+     */
     @RetryableTopic(
             attempts               = "4",
-            backoff                = @Backoff(delay = 5_000, multiplier = 2),
             autoCreateTopics       = "true",
             topicSuffixingStrategy = TopicSuffixingStrategy.SUFFIX_WITH_INDEX_VALUE,
             dltTopicSuffix         = ".DLT"
@@ -41,31 +43,30 @@ public class VideoEncodedEventConsumer {
             Acknowledgment ack) {
 
         log.info("VideoEncodedEvent received | movieId={} status={} partition={} offset={}",
-                event.movieId(), event.status(), partition, offset);
+                event.getMovieId(), event.getStatus(), partition, offset);
 
-        switch (event.status()) {
+        if (event.getStatus() == null) {
+            log.error("VideoEncodedEvent status missing | movieId={}", event.getMovieId());
+            ack.acknowledge();
+            return;
+        }
 
+        switch (event.getStatus()) {
             case SUCCESS -> {
-                // ── persist to PostgreSQL + warm Redis ────────────────────────
-                streamingService.saveStreamingMetadata(
-                        event.movieId(),
-                        event.masterPlaylistKey(),
-                        event.bucket(),
-                        event.encodedQualities()
-                );
+                redisService.warmStreamingMetadataCache(
+                        event.getMovieId(),
+                        event.getMasterPlaylistKey(),
+                        event.getEncodedQualities());
 
                 ack.acknowledge();
-                log.info("StreamingMetadata saved + Redis warmed ✓ | movieId={}", event.movieId());
+                log.info("Redis cache warmed from VideoEncodedEvent ✓ | movieId={}", event.getMovieId());
             }
 
             case FAILED -> {
-                // evict any stale cache — video is in failed state
-                redisService.evictMovieCache(event.movieId());
-
+                redisService.evictMovieCache(event.getMovieId());
                 log.error("Encoding FAILED upstream | movieId={} reason={}",
-                        event.movieId(), event.failureReason());
-
-                ack.acknowledge();  // don't retry — failure is final from encoding service
+                        event.getMovieId(), event.getErrorMessage());
+                ack.acknowledge();
             }
         }
     }
@@ -78,8 +79,8 @@ public class VideoEncodedEventConsumer {
             @Payload VideoEncodedEvent event,
             Acknowledgment ack) {
 
-        log.error("DLT — retries exhausted | movieId={}", event.movieId());
-        redisService.evictMovieCache(event.movieId());
+        log.error("DLT — retries exhausted | movieId={}", event.getMovieId());
+        redisService.evictMovieCache(event.getMovieId());
         // TODO: trigger ops alert — SNS / PagerDuty
         ack.acknowledge();
     }
