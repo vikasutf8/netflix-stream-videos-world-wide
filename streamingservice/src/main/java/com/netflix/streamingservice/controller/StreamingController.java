@@ -63,6 +63,20 @@ public class StreamingController {
         return ResponseEntity.ok(ApiResponse.success(response, "Streaming URL ready"));
     }
 
+/**
+ * GET : signedPlaylist
+ * 1. server signed m3u8 playlist context
+ * 2 . callled by HLS players for each quality playlist
+ *  moveId and path
+ *  inside it :
+ *      1 find basePath  ..from path
+ *      2. read m3u8 content from s3
+ *      3. rewirte each line that is a segemnt or playlist reference to have presigned url
+ *          rewirte stirngBuilddere  why ??
+ *          this is a segment or playlist reference --build full s3 key and sign it
+ *      NOTE: this is the KEY METHOD make everythiung secure
+ */
+
 
     /**
      * DELETE /api/v1/streaming/{movieId}/cache
