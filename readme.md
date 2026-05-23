@@ -1,383 +1,231 @@
 # How Netflix Streams Video to Millions of Users
 
 ## Problem Statement
-
 A movie studio uploads a raw 2-hour movie file to Netflix.
 
-- Raw movie size = 50 GB
-- Millions of users stream the same movie simultaneously
-- Users watch on:
-  - Mobile
-  - Laptop
-  - Smart TV
-  - Tablet
-- Every user has different internet bandwidth:
-  - 5G
-  - 4G
-  - Wi-Fi
-  - Slow internet connections
+- Raw movie size can be very large (for example, 50 GB).
+- Millions of users can stream the same movie at the same time.
+- Users watch on mobile, laptop, smart TV, and tablet.
+- Internet quality is different for every user (5G, 4G, Wi-Fi, slow networks).
 
 ---
 
-# Main Challenges (SSQ)
+## Main Challenges (SSQ)
 
-## 1. Storage
+### 1) Storage
+**Problem**
+- Raw movie files are huge, and the catalog is massive.
 
-### Problem
-Storing huge raw movie files for thousands of movies and shows.
+**Solution**
+- Store videos in distributed cloud object storage.
+- Replicate data across regions for reliability.
+- Compress and encode efficiently.
 
-### Netflix Solution
-- Store movies in distributed cloud storage
-- Replicate data across multiple regions
-- Compress and encode files efficiently
-
-### Technologies
+**Technologies**
 - AWS S3 / Open Connect Storage
-- Distributed File Systems
-- Data Replication
+- Distributed storage systems
+- Data replication strategies
 
 ---
 
-## 2. Streaming
+### 2) Streaming
+**Problem**
+- Millions of concurrent viewers need low-latency playback.
 
-### Problem
-10 million users watching the same movie at the same time.
+**Solution**
+- Use CDN edge delivery close to users.
+- Stream short chunks instead of full-file download.
 
-### Netflix Solution
-- Use CDN (Content Delivery Network)
-- Store movie copies near users globally
-- Deliver chunks instead of full file download
+**How it works**
+- Video is split into small chunks (2–10 seconds each).
+- Player downloads chunks continuously during playback.
 
-### How Streaming Works
-Movie is divided into:
-- Small chunks (2–10 seconds)
-
-Player downloads chunks continuously while playing.
-
-### Technologies
+**Technologies**
 - CDN
-- HTTP Streaming
+- HTTP streaming
 - TCP/IP
-- Edge Servers
+- Edge servers
 
 ---
 
-## 3. Quality Adaptation
+### 3) Quality Adaptation (ABR)
+**Problem**
+- Device capability and network speed vary per user.
 
-### Problem
-Every user has different internet speed and device capability.
+**Solution**
+- Generate multiple quality variants of the same movie.
 
-### Netflix Solution
-Netflix creates multiple versions of the same movie:
+**Typical renditions**
+- 240p (low)
+- 480p (SD)
+- 720p (HD)
+- 1080p (Full HD)
+- 4K (Ultra HD)
 
-| Quality | Resolution | Internet Required |
-|----------|-------------|------------------|
-| 240p | Low | Slow Internet |
-| 480p | SD | 3G/4G |
-| 720p | HD | Moderate |
-| 1080p | Full HD | Fast Wi-Fi |
-| 4K | Ultra HD | High-Speed Fiber |
-
-Player automatically switches quality based on:
-- Bandwidth
-- Device screen size
-- Network stability
-
-This is called:
-
-## Adaptive Bitrate Streaming (ABR)
-
-# HLD Imaga
-<img width="1446" height="1162" alt="image" src="https://github.com/user-attachments/assets/dde85b50-23fd-4e70-91f0-c456c5557acb" />
-
-
-# LLD  Images
-<img width="1019" height="841" alt="image" src="https://github.com/user-attachments/assets/c0e16d6d-fa95-403c-8fd1-6556d69d0a1d" />
-
-
-
----
-
-# Complete Netflix Pipeline
-
-## Step 1 — Upload Raw Movie
-Studio uploads:
-- 50 GB raw movie
-
----
-
-## Step 2 — Encoding & Compression
-Netflix converts movie into:
-- Multiple resolutions
-- Multiple bitrates
-- Different formats
-
-Example:
-- 240p
-- 480p
-- 720p
-- 1080p
-- 4K
-
-Compression codecs:
-- H.264
-- H.265
-- AV1
-
----
-
-## Step 3 — Chunking
-Movie split into small chunks:
-- 2–10 seconds each
-
-Example:
-movie_chunk_1.ts
-movie_chunk_2.ts
-movie_chunk_3.ts
-
----
-
-## Step 4 — CDN Distribution
-Chunks copied to global edge servers.
-
-Goal:
-Serve content from nearest location.
-
----
-
-## Step 5 — User Plays Movie
-Player requests:
-- Manifest file
-- Initial chunks
-
----
-
-## Step 6 — Adaptive Streaming
-Player continuously checks:
-- Internet speed
+**Player decision signals**
+- Current bandwidth
 - Buffer health
-- Device performance
+- Device/screen capability
 
-Then switches quality dynamically.
-
-Example:
-- Slow network → 480p
-- Fast Wi-Fi → 1080p
-
-Without stopping the movie.
+This is called **Adaptive Bitrate Streaming (ABR)**.
 
 ---
 
-# Core System Design Components
+## HLD Image
+![HLD](https://github.com/user-attachments/assets/dde85b50-23fd-4e70-91f0-c456c5557acb)
 
-## Backend Services
-- Encoding Service
-- Metadata Service
-- Recommendation Service
-- Streaming Service
-- Authentication Service
+## LLD Image
+![LLD](https://github.com/user-attachments/assets/c0e16d6d-fa95-403c-8fd1-6556d69d0a1d)
 
 ---
 
-## Infrastructure
-- CDN
-- Edge Servers
-- Distributed Storage
-- Load Balancers
-- Monitoring Systems
+## Complete Netflix Pipeline
+#### Step 1: Upload Raw Movie
+- Studio uploads the raw movie file to object storage.
+- Initial metadata is registered.
+
+#### Step 2: Encode and Compress
+- Encoding service creates multiple resolutions and bitrates.
+- Common codecs include H.264, H.265, and AV1.
+
+#### Step 3: Chunking
+- Encoded outputs are split into small `.ts` segments.
+- Example sequence: `movie_chunk_1.ts`, `movie_chunk_2.ts`, `movie_chunk_3.ts`.
+
+#### Step 4: CDN Distribution
+- Segments and playlists are pushed to global edge locations.
+- Users are served from the nearest available edge.
+
+#### Step 5: Playback Start
+- Player requests manifest (`.m3u8`) and initial segments.
+- Playback starts quickly from buffered chunks.
+
+#### Step 6: Adaptive Streaming Loop
+- Player continuously evaluates network and buffer conditions.
+- Quality switches dynamically (for example, 480p ↔ 1080p) without stopping playback.
 
 ---
 
-# Important Concepts
+## Important Concepts
 
-## CDN (Content Delivery Network)
-Servers distributed globally to reduce latency.
+### CDN (Content Delivery Network)
+Globally distributed servers that reduce latency and improve throughput.
 
----
+### Buffering
+Preloading chunks before playback to avoid interruption.
 
-## Buffering
-Preloading chunks before playback.
+### Transcoding
+Converting one source video into multiple formats and quality levels.
 
----
-
-## Transcoding
-Converting raw movie into multiple formats and qualities.
-
----
-
-## Adaptive Bitrate Streaming
-Dynamic quality switching based on bandwidth.
+### Adaptive Bitrate Streaming
+Dynamic quality switching based on real-time playback conditions.
 
 ---
 
-# Final Goal of Netflix
+## Final Goal of Netflix
+Netflix optimizes for:
 
-Netflix optimizes:
+- Storage cost
+- Streaming speed
+- Video quality
+- Low latency
+- High availability
+- Global scalability
 
-- Storage Cost
-- Streaming Speed
-- Video Quality
-- Low Latency
-- High Availability
-- Global Scalability
+Result: smooth playback for millions of concurrent users.
 
-To stream videos smoothly to millions of users simultaneously.
-EOF
+---
+## Microservice Ports
+- **Content Service**: `6001`
+- **Video Service**: `6002`
+- **Encoding Service**: `6003`
+- **Streaming Service**: `6004`
 
+---
+## Docker Compose (Infrastructure Stack)
 
-# Docker compose 
-# ╔══════════════════════════════════════════════════════════════════╗
-# ║              🎬  NETFIIX — Infrastructure Stack                  ║
-# ║         MySQL · Kafka (KRaft) · Redis · Redis Insight            ║
-# ╚══════════════════════════════════════════════════════════════════╝
+### Services and Ports
+- **MySQL**: `3306`
+- **Kafka (KRaft)**: `9092` (internal), `29092` (host)
+- **Redis**: `6379`
+- **Redis Insight**: `5540` (`http://localhost:5540`)
 
+### Prerequisites
+```shell
+docker --version
+docker compose version
+```
 
-# ──────────────────────────────────────────
-# 📦  SERVICES & PORTS
-# ──────────────────────────────────────────
-
-# Service         Image                        Port(s)
-# ─────────────── ──────────────────────────── ──────────────────────
-# mysql           mysql:8.0                    3306
-# kafka           confluentinc/cp-kafka:7.6.0  9092 (internal)
-#                                              29092 (host)
-# redis           redis:7.2-alpine             6379
-# redis-insight   redis/redisinsight:latest    5540  → http://localhost:5540
-
-
-# ──────────────────────────────────────────
-# ✅  PREREQUISITES
-# ──────────────────────────────────────────
-
-# Make sure these are installed before running:
-
-docker --version          # Docker >= 24.x
-docker compose version    # Docker Compose >= 2.x
-
-
-# ──────────────────────────────────────────
-# 🚀  START — spin up all services
-# ──────────────────────────────────────────
-
+### Start All Services
+```shell
 docker compose up -d
-# -d → detached mode (runs in background)
+```
 
-
-# ──────────────────────────────────────────
-# 🔍  STATUS — check running containers
-# ──────────────────────────────────────────
-
+### Check Container Status
+```shell
 docker compose ps
-# shows: container name, image, status, ports
+```
 
-
-# ──────────────────────────────────────────
-# 📋  LOGS — view service output
-# ──────────────────────────────────────────
-
-docker compose logs -f              # all services (follow mode)
-docker compose logs -f mysql        # MySQL only
-docker compose logs -f kafka        # Kafka only
-docker compose logs -f redis        # Redis only
+### View Logs
+```shell
+docker compose logs -f
+docker compose logs -f mysql
+docker compose logs -f kafka
+docker compose logs -f redis
 docker compose logs -f redis-insight
+```
 
-
-# ──────────────────────────────────────────
-# 🔌  CONNECT — credentials & access
-# ──────────────────────────────────────────
-
-# MySQL
+### Connect to Services
+**MySQL**
+```shell
 mysql -h 127.0.0.1 -P 3306 -u appuser -papppassword appdb
-#   root password : rootpassword
-#   app user      : appuser / apppassword
-#   database      : appdb
+```
 
-# Kafka  (list topics from host machine)
+**Kafka (list topics)**
+```shell
 kafka-topics --bootstrap-server localhost:29092 --list
-#   internal (container) : kafka:9092
-#   external (host)      : localhost:29092
+```
 
-# Redis CLI
+**Redis**
+```shell
 redis-cli -h 127.0.0.1 -p 6379 -a redispassword ping
-# expected response → PONG
+```
 
-# Redis Insight (GUI)
+**Redis Insight**
+```shell
 open http://localhost:5540
-#   Host     : redis
-#   Port     : 6379
-#   Password : redispassword
+```
 
+### Health Check
+```shell
+docker inspect --format='{{.Name}} -> {{.State.Health.Status}}' mysql kafka redis
+```
 
-# ──────────────────────────────────────────
-# 🏥  HEALTH — verify all containers healthy
-# ──────────────────────────────────────────
-
-docker inspect --format='{{.Name}} → {{.State.Health.Status}}' \
-  mysql kafka redis
-# expected → /mysql → healthy
-#            /kafka → healthy
-#            /redis → healthy
-
-
-# ──────────────────────────────────────────
-# 🔄  COMMON OPERATIONS
-# ──────────────────────────────────────────
-
-# Restart a single service
+### Common Operations
+```shell
 docker compose restart kafka
-
-# Stop all services (keeps volumes/data)
 docker compose stop
-
-# Stop + remove containers (keeps volumes/data)
 docker compose down
-
-# ⚠️  Stop + wipe ALL data (volumes deleted)
 docker compose down -v
+```
 
-
-# ──────────────────────────────────────────
-# 🛠️  TROUBLESHOOTING
-# ──────────────────────────────────────────
-
-# Port already in use?
-lsof -i :3306     # find what's using MySQL port
-lsof -i :6379     # find what's using Redis port
-lsof -i :9092     # find what's using Kafka port
-
-# Force recreate containers (picks up config changes)
+### Troubleshooting
+```shell
+lsof -i :3306
+lsof -i :6379
+lsof -i :9092
 docker compose up -d --force-recreate
-
-# Remove dangling images to free disk space
 docker image prune -f
-
-# Enter a running container shell
 docker exec -it mysql bash
 docker exec -it kafka bash
-docker exec -it redis sh       # alpine → sh not bash
+docker exec -it redis sh
+```
 
-
-# ──────────────────────────────────────────
-# 📁  VOLUMES — where data lives
-# ──────────────────────────────────────────
-
+### Volumes
+```shell
 docker volume ls | grep netfiix
-# netfiix_mysql-data    → MySQL databases
-# netfiix_redis-data    → Redis AOF snapshots
-# netfiix_kafka-data    → Kafka topic partitions
-
-# Inspect a volume path on disk
 docker volume inspect netfiix_mysql-data
+```
 
-
-# ──────────────────────────────────────────
-# ⚠️  PRODUCTION REMINDERS
-# ──────────────────────────────────────────
-
-# Change ALL default passwords before deploying:
-#   MYSQL_ROOT_PASSWORD  : rootpassword   ← change this
-#   MYSQL_PASSWORD       : apppassword    ← change this
-#   Redis --requirepass  : redispassword  ← change this
-#
-# Use a .env file and reference via ${VAR_NAME} in docker-compose.yml
-# Never commit real credentials to git
+### Production Reminder
+Change all default passwords before deployment and keep credentials in `.env` variables (never commit real secrets).
